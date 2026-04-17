@@ -1,7 +1,15 @@
 package main
 
-import "github.com/kiritosuki/qsh/cmd"
+import (
+	"fmt"
+	"os"
+
+	"github.com/kiritosuki/qsh/cli"
+)
 
 func main() {
-	cmd.Execute()
+	if err := cli.RootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
