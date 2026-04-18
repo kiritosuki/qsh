@@ -5,10 +5,6 @@
 *.pem
 *.crt
 
-config.json
-config.yaml
-config.yml
-
 .qsh/
 .q/
 
