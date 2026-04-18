@@ -12,7 +12,7 @@ import (
 
 const (
 	ConfigFilePath       = ".qsh/config.yaml"
-	BackupConfigFilePath = ".shell-ai/.backup-config.yaml"
+	BackupConfigFilePath = ".qsh/.backup-config.yaml"
 )
 
 //go:embed config.yaml
@@ -83,7 +83,7 @@ func writeConfigToFile(config AppConfig, fullFilePath string) error {
 }
 
 func SaveBackupConfig(config AppConfig) error {
-	filePath, err := FullFilePath(BackupConfigFilePath)
+	fullFilePath, err := FullFilePath(BackupConfigFilePath)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func SaveBackupConfig(config AppConfig) error {
 		return fmt.Errorf("error marshalling config: %s", err)
 	}
 
-	err = os.WriteFile(filePath, configData, 0644)
+	err = os.WriteFile(fullFilePath, configData, 0644)
 	if err != nil {
 		return fmt.Errorf("error writing config to file: %s", err)
 	}
