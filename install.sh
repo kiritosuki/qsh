@@ -6,15 +6,15 @@ set -e
 REPO="kiritosuki/qsh"
 BINARY_NAME="qsh"
 
-# 支持 VERSION=latest 或 VERSION=v0.1.0 传入
+# 支持 VERSION=latest 或通过环境变量 VERSION=v0.1.0 指定
 if [ -z "$VERSION" ] || [ "$VERSION" == "latest" ]; then
     echo "------------------------------------------------"
     echo "Fetching the latest version info..."
-    # 增加 -f 标志，如果 API 挂了直接报错
+    # 获取 GitHub 最新 Release 的 Tag 名字
     VERSION=$(curl -sf "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 fi
 
-# --- 架构检测 ---
+# --- 架构检测 (macOS & Linux) ---
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
@@ -24,12 +24,13 @@ case "$ARCH" in
     *) echo "Error: Architecture $ARCH is not supported."; exit 1 ;;
 esac
 
+# 验证操作系统
 if [[ "$OS" != "linux" && "$OS" != "darwin" ]]; then
     echo "Error: This script only supports Linux and macOS."
     exit 1
 fi
 
-# 匹配产物格式
+# 匹配你 build.sh 产生的压缩包格式: qsh-darwin-arm64.tar.gz
 RELEASE_TAR="${BINARY_NAME}-${OS}-${ARCH}.tar.gz"
 DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${RELEASE_TAR}"
 
@@ -41,26 +42,26 @@ echo "------------------------------------------------"
 
 # 1. 创建临时目录
 TMP_DIR=$(mktemp -d)
-# 确保脚本退出时清理临时目录
+# 确保脚本无论成功还是失败，退出时都会清理临时目录
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-# 2. 下载
+# 2. 下载压缩包
 curl -L "$DOWNLOAD_URL" -o "${TMP_DIR}/${RELEASE_TAR}"
 
-# 3. 解压
+# 3. 解压文件
 echo "Extracting files..."
 tar -xzf "${TMP_DIR}/${RELEASE_TAR}" -C "$TMP_DIR"
 
-# 4. 寻找解压后的二进制文件 (改用更稳健的查找方式)
-# 只要找到包含 qsh-os-arch 字样的第一个文件即可
-SOURCE_BINARY=$(find "$TMP_DIR" -type f -name "${BINARY_NAME}-${OS}-${ARCH}*" | head -n 1)
+# 4. 寻找解压后的二进制文件
+# 核心修复：排除 .tar.gz 后缀，确保只匹配到二进制程序本身
+SOURCE_BINARY=$(find "$TMP_DIR" -type f -name "${BINARY_NAME}-${OS}-${ARCH}*" ! -name "*.tar.gz" | head -n 1)
 
 if [ -z "$SOURCE_BINARY" ]; then
     echo "Error: Could not find binary in the downloaded package."
     exit 1
 fi
 
-# 5. 安装
+# 5. 安装到系统路径并重命名为 'q'
 echo "Installing to /usr/local/bin/q (may require password)..."
 sudo mv "$SOURCE_BINARY" "/usr/local/bin/q"
 sudo chmod +x "/usr/local/bin/q"
