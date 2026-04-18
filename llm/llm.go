@@ -7,8 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	. "github.com/kiritosuki/qsh/types"
+)
+
+const (
+	LLMTimeout = 120 // 单位: s
 )
 
 type LLMClient struct {
@@ -114,4 +119,15 @@ func (c *LLMClient) processStream(resp *http.Response) (string, error) {
 		}
 	}
 	return totalData, nil
+}
+
+func NewLLMClient(config ModelConfig) *LLMClient {
+	return &LLMClient{
+		config: config,
+		// 这里把nil转换成切片类型 创建一个不分配内存的切片 append直接在结果上分配内存
+		messages: append([]Message(nil), config.Prompt...),
+		httpClient: &http.Client{
+			Timeout: time.Second * LLMTimeout,
+		},
+	}
 }

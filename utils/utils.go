@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/mattn/go-tty"
@@ -11,7 +13,6 @@ const (
 	TermSafeZonePadding = 10
 )
 
-// TODO 看下面两个函数
 func GetTermSafeMaxWidth() int {
 	maxWidth := TermMaxWidth
 	termWidth, err := getTermWidth()
@@ -76,4 +77,19 @@ func StartsWithCodeBlock(s string) bool {
 		return strings.Repeat("`", len(s)) == s
 	}
 	return strings.HasPrefix(s, "```")
+}
+
+func OpenBrowser(url string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default: // For Linux or anything else
+		cmd = exec.Command("xdg-open", url)
+	}
+
+	return cmd.Start()
 }

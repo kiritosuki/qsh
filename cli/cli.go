@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"runtime"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -10,8 +12,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kiritosuki/qsh/config"
 	"github.com/kiritosuki/qsh/llm"
+	. "github.com/kiritosuki/qsh/types"
 	"github.com/kiritosuki/qsh/utils"
+	"github.com/spf13/cobra"
 )
 
 type State int
@@ -66,8 +71,39 @@ func makeQuery(client *llm.LLMClient, query string) tea.Cmd {
 }
 
 // initialModel 初始化model
-func initialModel(prompt string, client *llm.LLMClient) model {
+func initialModel(prompt string, client *llm.LLMClient) *model {
 	maxWidth := utils.GetTermSafeMaxWidth()
+	ti := textinput.New()
+	ti.Placeholder = "Describe a shell command, or ask a question."
+	ti.Focus()
+	ti.Width = maxWidth
+
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
+	runWithArgs := prompt != ""
+
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(int(maxWidth)),
+	)
+
+	model := model{
+		client:           client,
+		markdownRenderer: r,
+		textInput:        ti,
+		spinner:          s,
+		state:            ReceivingInput,
+		maxWidth:         maxWidth,
+		err:              nil,
+	}
+	if runWithArgs {
+		model.runWithArgs = true
+		model.state = Loading
+		model.query = prompt
+	}
+	return &model
 }
 
 /* 给 model 实现 tea.Model 的三个接口 */
@@ -116,7 +152,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textInput, cmd = m.textInput.Update(msg)
 		return m, cmd
 	}
-	return nil, cmd
+	return m, nil
 }
 
 // View 实现 tea.Model 的 View 接口
@@ -223,7 +259,6 @@ func (m *model) getConnectionError(err error) string {
 	// 暗风格 暗色字体 + 宽度限制 + 左边距
 	styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
 	message := fmt.Sprintf("\n  %v\n\n%v\n",
-		// TODO 后续把 AI 换成模型名称
 		styleRed.Render("Error: Failed to connect to AI"),
 		styleDim.Render(err.Error()),
 	)
@@ -252,4 +287,96 @@ func (m *model) formatResponse(response string, startsWithCode bool) (string, er
 		formatted = "\n" + formatted
 	}
 	return formatted, nil
+}
+
+func NewStreamCallback(p *tea.Program) func(content string, err error) {
+	return func(content string, err error) {
+		p.Send(partialResponseMsg{content, err})
+	}
+}
+
+func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
+	auth := modelConfig.Auth
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+	)
+
+	profileScriptName := ".zshrc or.bashrc"
+	shellSyntax := "\n```bash\nexport QSH=[your key]\n```"
+	if runtime.GOOS == "windows" {
+		profileScriptName = "$profile"
+		shellSyntax = "\n```powershell\n$env:QSH_API_KEY = \"[your key]\"\n```"
+	}
+
+	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+
+	switch auth {
+	case "QSH_API_KEY":
+		msg1 := styleRed.Render("QSH_API_KEY environment variable not set.")
+
+		// make it platform agnostic
+		message_string := fmt.Sprintf(`
+	1. Generate your API key at https://aihubmix.com/
+	2. Add your credit card in the API (for the free trial)
+	3. Set your key by running:
+	%s
+	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
+
+		msg2, _ := r.Render(message_string)
+		fmt.Printf("\n  %v%v\n", msg1, msg2)
+	default:
+		msg := styleRed.Render(auth + " environment variable not set.")
+		fmt.Printf("\n  %v", msg)
+	}
+}
+
+/* Main */
+
+func runQProgram(prompt string) {
+	// 加载已有配置或者创建默认配置
+	appConfig, err := config.LoadAppConfig()
+	if err != nil {
+		config.PrintConfigErrorMessage(err)
+		os.Exit(1)
+	}
+
+	modelConfig, err := config.GetModelConfig(appConfig)
+	if err != nil {
+		config.PrintConfigErrorMessage(err)
+		os.Exit(1)
+	}
+	auth := os.Getenv(modelConfig.Auth)
+	if auth == "" {
+		printAPIKeyNotSetMessage(modelConfig)
+		os.Exit(1)
+	}
+	// TODO 这里的保存似乎是多余的 读取的文件内容没变 应该不用再保存一次
+	// 一切检查完毕 保存配置
+	//config.SaveAppConfig(appConfig)
+
+	orgID := os.Getenv(modelConfig.OrgID)
+	modelConfig.Auth = auth
+	modelConfig.OrgID = orgID
+
+	c := llm.NewLLMClient(modelConfig)
+	p := tea.NewProgram(initialModel(prompt, c))
+	c.StreamCallback = NewStreamCallback(p)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("OOPS, there's been an error: %v", err)
+		os.Exit(1)
+	}
+}
+
+var RootCmd = &cobra.Command{
+	Use:   "q [request]",
+	Short: "A command line interface for natural language queries",
+	Run: func(cmd *cobra.Command, args []string) {
+		// 把所有参数合并成一个字符串 用空格分隔
+		prompt := strings.Join((args), " ")
+		if len(args) > 0 && args[0] == "config" {
+			config.RunConfigProgram(args)
+			return
+		}
+		runQProgram(prompt)
+	},
 }

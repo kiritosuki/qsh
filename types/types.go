@@ -40,3 +40,7 @@ type ResponseData struct {
 		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 }
+
+type Preferences struct {
+	DefaultModel string `yaml:"default_model"`
+}
