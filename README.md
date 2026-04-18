@@ -36,7 +36,9 @@ curl -fsSL https://raw.githubusercontent.com/kiritosuki/qsh/main/install.sh | en
 
 qsh 需要接入 AI 大模型，请先获取你的 API Key：
 
-访问 **AIHubMix 控制台** 获取 Key。
+访问 **AIHubMix 控制台** https://console.aihubmix.com/ 获取 Key，每天的免费额度足够正常使用。
+
+如果你选择其他中转站，可以根据[高级配置](#3-️-高级配置-advanced-configuration)中的提示修改 `EndPoint`。
 
 设置环境变量：
 
@@ -86,10 +88,8 @@ q config
 配置文件通常位于：
 
 ```
-~/.config/qsh/config.yaml
+~/.qsh/config.yaml
 ```
-
-（或程序提示的其他路径）
 
 你可以通过编辑该文件实现以下功能：
 
