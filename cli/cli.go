@@ -302,7 +302,7 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 	)
 
 	profileScriptName := ".zshrc or.bashrc"
-	shellSyntax := "\n```bash\nexport QSH=[your key]\n```"
+	shellSyntax := "\n```bash\nexport QSH_API_KEY=[your key]\n```"
 	if runtime.GOOS == "windows" {
 		profileScriptName = "$profile"
 		shellSyntax = "\n```powershell\n$env:QSH_API_KEY = \"[your key]\"\n```"
