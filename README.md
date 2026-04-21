@@ -28,6 +28,10 @@ curl -fsSL https://raw.githubusercontent.com/kiritosuki/qsh/main/install.sh | en
 
 暂未提供直接安装脚本，可以选择已发布的版本手动下载。
 
+### 更新
+
+你可以使用相同的 `curl` 命令来更新你的版本，值得注意的是，你可能需要使用 `q config reset` 命令来重置你的配置文件以获取更多内置默认模型（你也可以选择不更新而自定义你的配置文件）。
+
 ------
 
 ## 2. ⚡ 快速开始 (Quick Start)
