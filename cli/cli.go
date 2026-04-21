@@ -22,9 +22,9 @@ import (
 type State int
 
 const (
-	Loading State = iota
-	ReceivingInput
-	ReceivingResponse
+	Loading           State = iota // 发送了请求给AI，但还没收到回复
+	ReceivingInput                 // 等待用户输入
+	ReceivingResponse              // AI 正在不断生成回复(已有生成)，流式接收中
 )
 
 type model struct {
@@ -205,7 +205,7 @@ func (m *model) handleKeyEnter() (tea.Model, tea.Cmd) {
 		placeholderStyle := lipgloss.NewStyle().Faint(true)
 		message := "Copied to clipboard."
 		if !m.latestCommandIsCode {
-			message = "Only code can be copied to clipboard."
+			message = "Only the code was copied to clipboard."
 		}
 		message = placeholderStyle.Render(message)
 		return m, tea.Sequence(tea.Printf("%s", message), tea.Quit)
@@ -293,7 +293,6 @@ func (m *model) formatResponse(response string, startsWithCode bool) (string, er
 	}
 	formatted = strings.TrimPrefix(formatted, "\n")
 	formatted = strings.TrimSuffix(formatted, "\n")
-	// 如果是以代码开头 将代码展示在">"的后面
 	// 如果是以文字开头 增加换行符 来与用户输入的提示词分隔开
 	if !startsWithCode {
 		formatted = "\n" + formatted
