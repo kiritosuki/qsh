@@ -123,7 +123,7 @@ func GetModelConfig(appConfig AppConfig) (ModelConfig, error) {
 			return model, nil
 		}
 	}
-	// If the preferred model is not found, return the first model
+	// 如果引用了未配置的模型 返回配置文件中的第一个模型
 	return appConfig.Models[0], nil
 }
 

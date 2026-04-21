@@ -108,6 +108,18 @@ func initialModel(prompt string, client *llm.LLMClient) *model {
 
 /* 给 model 实现 tea.Model 的三个接口 */
 
+// model 有三个接口：Init Update View
+// 由于执行了p.Run() 这三个方法会接替调用
+// 先调用Init一次 之后调用Update占用前台线程阻塞 Update监听到Msg后会调用View来更新渲染
+// tea.Cmd 是一个函数：func() Msg
+// Init 会返回 tea.Cmd，这个 Cmd 会被交给框架放在后台开启新协程执行 返回的 Msg 会交给 Update
+// Update 会阻塞监听返回的 Msg，来源有：
+// 1. 键盘事件
+// 2. Init / Update 返回的 Cmd 在后台执行，返回的 Msg
+// 3. p.Send
+// 当 Update 执行完更新逻辑后 框架自动调用 View 进行重新渲染
+// 例如 spinner 没有调用 p.Run() 可以手动调用 Update View 方法
+
 // Init 实现 tea.Model 的 Init 接口
 func (m *model) Init() tea.Cmd {
 	if m.runWithArgs {
@@ -121,7 +133,7 @@ func (m *model) Init() tea.Cmd {
 // Update 实现 tea.Model 的 Update 接口
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	// 产生有效新消息 优先处理这些新消息
+	// 优先处理这些Msg
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -141,7 +153,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 	}
-	// 产生无效新消息 就更新加载动画
+	// 如果没有收到上面的Msg 处理这些动画更新Msg
 	switch m.state {
 	case Loading:
 		// 等待AI处理提问 加载图标转圈
@@ -350,9 +362,6 @@ func runQProgram(prompt string) {
 		printAPIKeyNotSetMessage(modelConfig)
 		os.Exit(1)
 	}
-	// TODO 这里的保存似乎是多余的 读取的文件内容没变 应该不用再保存一次
-	// 一切检查完毕 保存配置
-	//config.SaveAppConfig(appConfig)
 
 	orgID := os.Getenv(modelConfig.OrgID)
 	modelConfig.Auth = auth

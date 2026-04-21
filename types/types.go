@@ -3,8 +3,8 @@ package types
 type ModelConfig struct {
 	ModelName string    `yaml:"name"`
 	Endpoint  string    `yaml:"endpoint"`
-	Auth      string    `yaml:"auth_env_var"`
-	OrgID     string    `yaml:"org_env_var,omitempty"`
+	Auth      string    `yaml:"auth_env_var"`          // api_key
+	OrgID     string    `yaml:"org_env_var,omitempty"` // org_id
 	Prompt    []Message `yaml:"prompt"`
 }
 
