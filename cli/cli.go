@@ -126,7 +126,7 @@ func (m *model) Init() tea.Cmd {
 		// 有参数 图标旋转 等待调用AI查询结果
 		return tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query))
 	}
-	// 有参数 光标闪烁 等待用户输入
+	// 无参数 光标闪烁 等待用户输入
 	return textinput.Blink
 }
 
