@@ -2,7 +2,9 @@
 
 qsh 是一个轻量级的命令行 AI 助手，让你在终端中通过自然语言直接获取技术帮助。
 
-<img src="./pic/qsh.png" width="40%" />
+<p align="center">
+  <img src="./pic/qsh.png" width="40%" />
+</p>
 
 > 致敬： 本项目参考了 https://github.com/ibigio/shell-ai 的优秀设计思路与实现，仅用于我个人学习。
 
